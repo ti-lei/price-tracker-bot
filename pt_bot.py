@@ -12,21 +12,34 @@ import pt_service
 from pt_entity import UserGoodInfo, GoodInfo
 from pt_service import get_good_info, add_good_info, add_user_good_info, upsert_user
 
+# Use context 就是使用 文字 來做溝通
 updater = Updater(token=pt_config.BOT_TOKEN, use_context=True)
+# 物件化調度員
 dispatcher = updater.dispatcher
 bot = telegram.Bot(token=pt_config.BOT_TOKEN)
 logger = logging.getLogger('Bot')
 
 
+# Polling vs. Webhook
+# The general difference between polling and a webhook is:
+
+# Polling (via get_updates) periodically connects to Telegram's servers to check for new updates
+# A Webhook is a URL you transmit to Telegram once. Whenever a new update for your bot arrives,
+# Telegram sends that update to the specified URL.
+
 def run():
     bot_dispatcher = None
     if pt_config.TELEGRAM_BOT_MODE == 'polling':
         bot_updater = Updater(token=pt_config.BOT_TOKEN, use_context=True)
+        # 物件化調度員
         bot_dispatcher = bot_updater.dispatcher
+        # check the robot update time (隔多久 檢查 使用者有沒有輸入)
         bot_updater.start_polling()
     else:
         import os
+        # 這也是去跟環境變數去拿PORT的値 拿不到就給 8443
         port = int(os.environ.get('PORT', '8443'))
+        # 這裡沒有 需要 互動所以不用 use_context
         bot_updater = Updater(pt_config.BOT_TOKEN)
 
         bot_updater.start_webhook(listen="0.0.0.0",
@@ -39,6 +52,7 @@ def run():
     start_handler = CommandHandler('start', start)
     bot_dispatcher.add_handler(start_handler)
 
+    # 找不到相關的指令執行 auto_add_good
     echo_handler = MessageHandler(Filters.text & (~Filters.command), auto_add_good)
     bot_dispatcher.add_handler(echo_handler)
 
@@ -48,6 +62,8 @@ def run():
     clear_good_handler = CommandHandler('clear', clear)
     bot_dispatcher.add_handler(clear_good_handler)
 
+    # Blocks until one of the signals are received and stops the updater.
+    # idle(stop_signals=(<Signals.SIGINT: 2>, <Signals.SIGTERM: 15>, <Signals.SIGABRT: 6>))
     bot_updater.idle()
 
 

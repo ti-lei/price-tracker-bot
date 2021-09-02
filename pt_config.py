@@ -2,6 +2,8 @@ import os
 
 from dotenv import load_dotenv
 
+#os.path.abspath(__file__) 會回傳 這個檔案的絕對路徑
+#os.path.dirname() 會回傳這個檔案的相對位置
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(BASE_DIR, '.env')
 load_dotenv(dotenv_path=env_path, verbose=True)

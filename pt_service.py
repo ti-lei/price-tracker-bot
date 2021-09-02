@@ -23,6 +23,13 @@ def upsert_user(user_id, chat_id):
     conn = pool.getconn()
     with conn:
         with conn.cursor() as cursor:
+            # public."user" 是表格的名字, id, chat_id, state 是欄位
+            # ON CONFLICT(id) DO UPDATE
+            # SET chat_id = EXCLUDED.chat_id, state = EXCLUDED.state;
+            # 這裡的意思是指 如果新Innsert 的資料跟 之前的資料id 依樣的話
+            # update chat_id 跟 state 其他的用舊的資料
+            # https://www.prisma.io/dataguide/postgresql/inserting-and-modifying-data/insert-on-conflict
+            
             sql = '''INSERT INTO public."user"
             (id, chat_id, state)
             VALUES(%s, %s, 1)
