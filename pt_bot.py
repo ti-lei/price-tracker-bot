@@ -4,7 +4,7 @@ import re
 import requests
 import telegram
 from telegram import ChatAction
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 
 import pt_config
 import pt_error
@@ -19,6 +19,8 @@ dispatcher = updater.dispatcher
 bot = telegram.Bot(token=pt_config.BOT_TOKEN)
 logger = logging.getLogger('Bot')
 
+UNTRACK = range(1)
+ADD_GOOD = range(1)
 
 # Polling vs. Webhook
 # The general difference between polling and a webhook is:
@@ -52,15 +54,35 @@ def run():
     start_handler = CommandHandler('start', start)
     bot_dispatcher.add_handler(start_handler)
 
-    # 找不到相關的指令執行 auto_add_good
-    echo_handler = MessageHandler(Filters.text & (~Filters.command), auto_add_good)
-    bot_dispatcher.add_handler(echo_handler)
+
+    add_good_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('add', add)],
+        fallbacks=[CommandHandler('cancel', cancel)],
+
+        states={
+            UNTRACK: [MessageHandler(Filters.text & (~Filters.command), add_good)],
+        },
+    )
+
+    bot_dispatcher.add_handler(add_good_conv_handler)
+
 
     my_good_handler = CommandHandler('my', my)
     bot_dispatcher.add_handler(my_good_handler)
 
-    clear_good_handler = CommandHandler('clear', clear)
-    bot_dispatcher.add_handler(clear_good_handler)
+    clear_all_my_good_handler = CommandHandler('clearall', clearall)
+    bot_dispatcher.add_handler(clear_all_my_good_handler)
+
+    clear_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('clear', clear)],
+        fallbacks=[CommandHandler('cancel', cancel)],
+
+        states={
+            UNTRACK: [MessageHandler(Filters.text & (~Filters.command), untrack)],
+        },
+    )
+
+    bot_dispatcher.add_handler(clear_conv_handler)
 
     # Blocks until one of the signals are received and stops the updater.
     # idle(stop_signals=(<Signals.SIGINT: 2>, <Signals.SIGTERM: 15>, <Signals.SIGABRT: 6>))
@@ -71,11 +93,16 @@ def start(update, context):
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     upsert_user(user_id, chat_id)
-    msg = '''/my 顯示追蹤清單\n/clear 清空追蹤清單\n直接貼上momo商品連結可加入追蹤清單'''
+    msg = '''/my 顯示追蹤清單\n/clearall 清空全部追蹤清單\n/clear 刪除指定追蹤商品\n/add 後貼上momo商品連結可加入追蹤清單\n或是可以直接使用指令選單方便操作'''
     context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 
-def auto_add_good(update, context):
+def add(update, context):
+    update.message.reply_text('貼上momo商品連結加入收藏\n輸入 /cancel 後放棄動作')
+    return ADD_GOOD
+
+
+def add_good(update, context):
     from urllib.parse import urlparse
     from urllib.parse import parse_qs
     try:
@@ -119,6 +146,8 @@ def auto_add_good(update, context):
     except Exception as e:
         logger.error("Catch an exception.", exc_info=True)
         context.bot.send_message(chat_id=update.effective_chat.id, text='Something wrong...try again.')
+    finally:
+        return ConversationHandler.END
 
 
 def my(update, context):
@@ -144,9 +173,37 @@ def my(update, context):
 
 
 def clear(update, context):
+    update.message.reply_text(text='請輸入想取消收藏的商品名稱 (有包含就可以)\n輸入 /cancel 放棄動作')
+    return UNTRACK
+
+
+def clearall(update, context):
     user_id = str(update.message.from_user.id)
-    pt_service.clear(user_id)
-    context.bot.send_message(chat_id=update.effective_chat.id, text='已清空追蹤清單')
+    removed_goods_name = pt_service.clear(user_id, None)
+    response_msg = '無可清空的追蹤商品'
+    if len(removed_goods_name) > 0:
+        response_msg = '已清空以下物品\n'
+        for good_name in removed_goods_name:
+            response_msg += '====\n%s\n====\n' % good_name
+    context.bot.send_message(chat_id=update.effective_chat.id, text=response_msg)
+
+
+def untrack(update, context):
+    user_id = str(update.message.from_user.id)
+    good_name = update.message.text
+    removed_goods_name = pt_service.clear(user_id, good_name)
+    response_msg = '無可清空的追蹤商品'
+    if len(removed_goods_name) > 0:
+        response_msg = '已清空以下物品\n'
+        for good_name in removed_goods_name:
+            response_msg += '====\n%s\n====\n' % good_name
+    update.message.reply_text(text=response_msg)
+    return ConversationHandler.END
+
+
+def cancel(update, context):
+    update.message.reply_text(text='已放棄動作')
+    return ConversationHandler.END
 
 
 def send(msg, chat_id):
