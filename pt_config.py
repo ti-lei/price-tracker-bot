@@ -1,13 +1,17 @@
 import os
 
+# 此插件用於載入.env檔案(自行創建)作爲額外環境變數（不會存到系統，只存在于此專案内）
 from dotenv import load_dotenv
 
 #os.path.abspath(__file__) 會回傳 這個檔案的絕對路徑
 #os.path.dirname() 會回傳這個檔案的相對位置
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(BASE_DIR, '.env')
+
+# 載入.env環境變數
 load_dotenv(dotenv_path=env_path, verbose=True)
 
+# os.getenv為取得環境變數方法, 若不存在此變數會回傳None, 或是在第二個param設定default值(環境變數優先再來才是default值)
 TELEGRAM_BOT_MODE = os.getenv('TELEGRAM_BOT_MODE', 'polling')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 MOMO_URL = 'https://m.momoshop.com.tw/'
