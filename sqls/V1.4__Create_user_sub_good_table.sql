@@ -16,9 +16,9 @@ CREATE INDEX user_sub_good_good_id_idx ON public.user_sub_good USING btree (good
 create trigger set_create_time_update_time before
 insert
     on
-    public.user_sub_good for each row execute function trigger_set_create_time_update_time();
+    public.user_sub_good for each row EXECUTE PROCEDURE trigger_set_create_time_update_time();
 
 create trigger set_update_time before
 update
     on
-    public.user_sub_good for each row execute function trigger_set_update_time();
+    public.user_sub_good for each row EXECUTE PROCEDURE trigger_set_update_time();

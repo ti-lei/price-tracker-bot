@@ -9,9 +9,9 @@ CREATE TABLE public."user" (
 create trigger set_create_time_update_time before
 insert
     on
-    public."user" for each row execute function trigger_set_create_time_update_time();
+    public."user" for each row EXECUTE PROCEDURE trigger_set_create_time_update_time();
 
 create trigger set_update_time before
 update
     on
-    public."user" for each row execute function trigger_set_update_time();
+    public."user" for each row EXECUTE PROCEDURE trigger_set_update_time();
